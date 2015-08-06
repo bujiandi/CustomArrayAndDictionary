@@ -33,7 +33,13 @@ objArray.removeFirst()
 objArray.insert(99, atIndex: 0)
 objArray.insert(98, atIndex: 0)
 objArray.insert(97, atIndex: 0)
-
-objArray.replaceRange(1..<2, with: [9,3])
-
 print(objArray)
+print(objArray.count)
+
+objArray.replaceRange(0...objArray.endIndex, with: [9,44,66])
+//objArray.removeAtIndex(7)
+objArray.removeRange(0..<1)
+objArray.splice([3,8,9], atIndex: 1)
+print(objArray)
+print(objArray.count)
+
