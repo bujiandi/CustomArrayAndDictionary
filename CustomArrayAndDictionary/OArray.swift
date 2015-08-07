@@ -1,22 +1,44 @@
 import Foundation
 
+func +<Element, S : SequenceType where S.Generator.Element == Element>(lhs: OArray<Element>, rhs: S) -> OArray<Element> {
+    let array = OArray<Element>(lhs)
+    array.extend(rhs)
+    return array
+}
+
+func +<Element, C : CollectionType where C.Generator.Element == Element>(lhs: OArray<Element>, rhs: C) -> OArray<Element> {
+    let array = OArray<Element>(lhs)
+    array.extend(rhs)
+    return array
+}
+
+func +=<Element, S : SequenceType where S.Generator.Element == Element>(inout lhs: OArray<Element>, rhs: S) {
+    lhs.extend(rhs)
+}
+
+/// Extend `lhs` with the elements of `rhs`.
+func +=<Element, C : CollectionType where C.Generator.Element == Element>(inout lhs: OArray<Element>, rhs: C) {
+    lhs.extend(rhs)
+}
+
 class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
     
     typealias Index = Int
     
-    private var _offset:Int = 0
-    private var _count:Int = 0
-    private var _capacity:Int = 10
+    private var _offset:Int = 0     // 元素起始位置偏移
+    private var _count:Int = 0      // 元素实际数量
+    private var _capacity:Int = 10  // 数组已分配空间数量
     private var _minimumCapacity:Int = 10
     private var _pointer:UnsafeMutablePointer<Element>
+    private var _slice:Bool = false
     
     /// ArrayLiteralConvertible
     required init(arrayLiteral elements: Element...) {
         _count = elements.count
-        _capacity = _count
+        _capacity = _count == 0 ? _capacity : _count
         _minimumCapacity = _capacity
         _pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
-        for var i:Int = 0; i<_capacity; i++ {
+        for var i:Int = 0; i<_count; i++ {
             _pointer.advancedBy(i).initialize(elements[advance(elements.startIndex, i)])
         }
     }
@@ -62,17 +84,8 @@ class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
         _count = count
     }
     
-    private init(_ pointer:UnsafeMutablePointer<Element>, _ subRange:Range<Int>, _ capacity:Int) {
-        _offset = subRange.startIndex
-        _count = subRange.count
-        _capacity = capacity
-        _minimumCapacity = subRange.endIndex
-        _pointer = pointer
-    }
-    
     deinit {
-        _pointer.destroy(_count)
-        _pointer.dealloc(_capacity)
+        _releaseBuffer(0, oldCapacity: _capacity)
         _pointer = nil
     }
     
@@ -101,7 +114,6 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
         }
     }
     
-    
     /// Always zero, which is the index of the first element when non-empty.
     var startIndex: Int { return 0 }
     
@@ -121,6 +133,11 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
         return _pointer.advancedBy(_offset).memory
     }
     
+    var last: Element? {
+        if _count == 0 { return nil }
+        return _pointer.advancedBy(_offset + _count - 1).memory
+    }
+    
     /// Return a value less than or equal to the number of elements in
     /// `self`, **nondestructively**.
     ///
@@ -131,8 +148,8 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
     /// over `self`.
     ///
     /// - Complexity: O(N).
-    func map<T>(@noescape transform: (Element) -> T) -> [T] {
-        var result:[T] = []
+    func map<T>(@noescape transform: (Element) -> T) -> OArray<T> {
+        let result:OArray<T> = OArray<T>(capacity: _count)
         for var i:Int = 0; i < _count; i++ {
             result.append(transform(_pointer.advancedBy(_offset + i).memory))
         }
@@ -141,8 +158,8 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
     
     /// Return an `Array` containing the elements of `self`,
     /// in order, that satisfy the predicate `includeElement`.
-    func filter(@noescape includeElement: (Element) -> Bool) -> [Element] {
-        var result:[Element] = []
+    func filter(@noescape includeElement: (Element) -> Bool) -> OArray<Element> {
+        let result:OArray<Element> = []
         for var i:Int = 0; i < _count; i++ {
             let item:Element = _pointer.advancedBy(_offset + i).memory
             if includeElement(item) {
@@ -151,17 +168,39 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
         }
         return result
     }
+    
+    /// 利用闭包功能 给数组添加 查找首个符合条件元素 的 方法
+    func find(@noescape includeElement: (Element) -> Bool) -> Element? {
+        for var i:Int = 0; i<_count; i++ {
+            let item = _pointer.advancedBy(_offset + i).memory
+            if includeElement(item) {
+                return item
+            }
+        }
+        return nil
+    }
+    
+    /// 利用闭包功能 获取数组元素某个属性值的数组
+    func valuesFor<U>(@noescape includeElement: (Element) -> U) -> [U] {
+        var result:[U] = []
+        for item:Element in self {
+            result.append(includeElement(item))
+        }
+        return result
+    }
+    
+    /// 利用闭包功能 获取符合条件数组元素 相关内容的数组
+    func valuesFor<U>(@noescape includeElement: (Element) -> U?) -> [U] {
+        var result:[U] = []
+        for item:Element in self {
+            if let u:U = includeElement(item) {
+                result.append(u)
+            }
+        }
+        return result
+    }
 }
 
-func +<Element> (lhs: OArray<Element>, rhs: Element) -> OArray<Element> {
-    lhs.append(rhs)
-    return lhs
-}
-
-/// Extend `lhs` with the elements of `rhs`.
-func +=<Element, S : SequenceType where S.Generator.Element == Element>(inout lhs: OArray<Element>, rhs: S) {
-    lhs.extend(rhs)
-}
 
 extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     
@@ -170,15 +209,14 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     }
     
     func splice<S : CollectionType where S.Generator.Element == Generator.Element>(newElements: S, atIndex i: Int) {
-        let newElements = [Element](newElements)
+        let newElements = OArray<Element>(newElements)
         let length = newElements.count
         if i > _count {
             fatalError("can't insert because index out of range")
-        } else if i == 0 && _offset > length {
+        } else if i == 0 && _offset >= length {
             //print("使用普通缓冲")
-            for var j:Int = length - 1; j >= 0; j++ {
-                _pointer.advancedBy(--_offset).initialize(newElements[j])
-            }
+            _offset -= length
+            _pointer.advancedBy(_offset).moveInitializeBackwardFrom(newElements._pointer, count: length)
             _count++
             return
         }
@@ -188,13 +226,12 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
         }
         let pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
         if i > 0 { pointer.moveInitializeBackwardFrom(_pointer.advancedBy(_offset), count: i) }
+        pointer.advancedBy(i).moveInitializeBackwardFrom(newElements._pointer, count: length)
         for var j:Int = 0; j < length; j++ {
             pointer.advancedBy(i + j).initialize(newElements[j])
         }
         if i < _count { pointer.advancedBy(i + length).moveInitializeBackwardFrom(_pointer.advancedBy(_offset + i), count: _count - i) }
-        _pointer.advancedBy(_offset).destroy(_count)
-        _pointer.dealloc(oldCapacity)
-        _offset = 0
+        _releaseBuffer(_capacity, oldCapacity:oldCapacity)
         _count += length
         _pointer = pointer
     }
@@ -202,12 +239,20 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     func removeRange(subRange: Range<OArray.Index>) {
         replaceRange(subRange, with: [])
     }
+    
     /// A type that can represent a sub-range of an `Array`.
-    //typealias SubSequence = OArray<Element>
     typealias SubSlice = OArray<Element>
     subscript (subRange: Range<Int>) -> SubSlice {
         get {
-            return OArray<Element>(_pointer, (_offset + subRange.startIndex)..<(_offset + subRange.endIndex), _capacity)
+            
+            let slice = OArray<Element>(self)
+            slice._capacity = _capacity
+            slice._offset = _offset + subRange.startIndex
+            slice._count = subRange.count
+            slice._minimumCapacity = _offset + subRange.endIndex
+            slice._pointer = _pointer
+            slice._slice = true
+            return slice
         }
         set {
             replaceRange(subRange, with: newValue)
@@ -225,28 +270,37 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     func reserveCapacity(minimumCapacity: Int) {
         _minimumCapacity = minimumCapacity
         if _capacity >= minimumCapacity && _count < minimumCapacity {
-            resizeUnsafeCapacity(minimumCapacity)
+            _resizeUnsafeCapacity(minimumCapacity)
         } else if _capacity < minimumCapacity {
-            resizeUnsafeCapacity(minimumCapacity)
+            _resizeUnsafeCapacity(minimumCapacity)
         }
     }
     
-    private func resizeUnsafeCapacity(minimumCapacity: Int) {
-        let pointer = UnsafeMutablePointer<Element>.alloc(minimumCapacity)
+    private func _resizeUnsafeCapacity(newCapacity: Int) {
+        let pointer = UnsafeMutablePointer<Element>.alloc(newCapacity)
         pointer.moveInitializeBackwardFrom(_pointer.advancedBy(_offset), count: _count)
-        _pointer.dealloc(_capacity)
+        _releaseBuffer(newCapacity, oldCapacity:_capacity)
         _pointer = pointer
-        _capacity = minimumCapacity
-        _offset = 0
     }
     
+    private func _releaseBuffer(newCapacity: Int, oldCapacity: Int) {
+        if !_slice {
+            if _count > 0 {
+                _pointer.advancedBy(_offset).destroy(_count)
+            }
+            _pointer.dealloc(oldCapacity)
+        }
+        _slice = false
+        _capacity = newCapacity
+        _offset = 0
+    }
     
     /// Append `newElement` to the Array.
     ///
     /// - Complexity: Amortized O(1) unless `self`'s storage is shared with another live array; O(`count`) if `self` does not wrap a bridged `NSArray`; otherwise the efficiency is unspecified..
     func append(newElement: Element) {
         if (_offset + _count) == _capacity {
-            resizeUnsafeCapacity(Int(Double(_count) * 1.6) + 1)
+            _resizeUnsafeCapacity(Int(Double(_count) * 1.6) + 1)
         }
         _pointer.advancedBy(_offset + _count++).initialize(newElement)
     }
@@ -255,30 +309,26 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     ///
     /// - Complexity: O(*length of result*).
     func extend<S : SequenceType where S.Generator.Element == Element>(newElements: S) {
-        let newElements = [Element](newElements)
-        if (_offset + _count + newElements.count) > _capacity {
-            resizeUnsafeCapacity(_count + newElements.count)
+        let newElements = OArray<Element>(newElements)
+        let length = newElements.count
+        if (_offset + _count + length) > _capacity {
+            _resizeUnsafeCapacity(_count + length)
         }
-        for var i:Int = 0; i<newElements.count; i++ {
-            _pointer.advancedBy(_offset + i).initialize(newElements[i])
-        }
-        _count += newElements.count
+        _pointer.advancedBy(_offset + _count).moveInitializeBackwardFrom(newElements._pointer, count: length)
+        _count += length
     }
     
     /// Append the elements of `newElements` to `self`.
     ///
     /// - Complexity: O(*length of result*).
     func extend<C : CollectionType where C.Generator.Element == Element>(newElements: C) {
-        //extend(newElements)
-
-        let newElements = [Element](newElements)
-        if (_offset + _count + newElements.count) > _capacity {
-            resizeUnsafeCapacity(_count + newElements.count)
+        let newElements = OArray<Element>(newElements)
+        let length = newElements.count
+        if (_offset + _count + length) > _capacity {
+            _resizeUnsafeCapacity(_count + length)
         }
-        for var i:Int = 0; i<newElements.count; i++ {
-            _pointer.advancedBy(_offset + i).initialize(newElements[i])
-        }
-        _count += newElements.count
+        _pointer.advancedBy(_offset + _count).moveInitializeBackwardFrom(newElements._pointer, count: length)
+        _count += length
     }
     
     /// Remove an element from the end of the Array in O(1).
@@ -307,26 +357,7 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     ///
     /// - Complexity: O(`count`).
     func insert(newElement: Element, atIndex i: Int) {
-        if i > _count {
-            fatalError("can't insert because index out of range")
-        } else if i == 0 && _offset > 0 {
-            //print("使用普通缓冲")
-            _pointer.advancedBy(--_offset).initialize(newElement)
-             _count++
-            return
-        }
-        let oldCapacity = _capacity
-        if (_offset + _count) == _capacity {
-            _capacity = Int(Double(_count) * 1.6) + 1
-        }
-        let pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
-        if i > 0 { pointer.moveInitializeBackwardFrom(_pointer.advancedBy(_offset), count: i) }
-        pointer.advancedBy(i).initialize(newElement)
-        if i < _count { pointer.advancedBy(i + 1).moveInitializeBackwardFrom(_pointer.advancedBy(_offset + i), count: _count - i) }
-        _pointer.advancedBy(_offset).destroy(_count++)
-        _pointer.dealloc(oldCapacity)
-        _offset = 0
-        _pointer = pointer
+        splice([newElement], atIndex: i)
     }
     
     /// Remove and return the element at index `i`.
@@ -346,11 +377,9 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
         let pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
         if index > 0 { pointer.moveInitializeBackwardFrom(_pointer.advancedBy(_offset), count: index) }
         if index < _count - 1 { pointer.advancedBy(index).moveInitializeBackwardFrom(_pointer.advancedBy(_offset + index + 1), count: _count - index - 1) }
-        _pointer.advancedBy(_offset).destroy(_count--)
-        _pointer.dealloc(_capacity)
-        _offset = 0
+        _releaseBuffer(_capacity, oldCapacity:_capacity)
         _pointer = pointer
-
+        _count -= 1
         return element
     }
     
@@ -361,13 +390,12 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     /// - Complexity: O(`self.count`).
     func removeAll(keepCapacity keepCapacity: Bool = false) {
         _pointer.advancedBy(_offset).destroy(_count)
+        _count = 0
         if !keepCapacity {
-            _pointer.dealloc(_capacity)
-            _capacity = _minimumCapacity
+            _releaseBuffer(_minimumCapacity, oldCapacity:_capacity)
             _pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
         }
         _offset = 0
-        _count = 0
     }
     
     /// Replace the given `subRange` of elements with `newElements`.
@@ -381,28 +409,21 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
         if subRange.endIndex > _count {
             fatalError("can't replaceRange because subRange out of range")
         }
-        var elements:Array<Element> = Array<Element>(newElements)
-        if elements.count == subRange.count {
-            for var i:Int = subRange.startIndex; i<subRange.endIndex; i++ {
-                _pointer.advancedBy(_offset + i).memory = elements[i - subRange.startIndex]
-            }
+        let newElements = OArray<Element>(newElements)
+        let length = newElements.count
+        if length == subRange.count {
+            _pointer.advancedBy(_offset + subRange.startIndex).assignBackwardFrom(newElements._pointer, count: subRange.count)
         } else {
-            let length = elements.count
             let newCapacity = _count + length - subRange.count
             let pointer = UnsafeMutablePointer<Element>.alloc(newCapacity)
             if subRange.startIndex > 0 { pointer.moveInitializeBackwardFrom(_pointer.advancedBy(_offset), count: subRange.startIndex) }
-            for var i:Int = 0; i<length; i++ {
-                pointer.advancedBy(i + subRange.startIndex).initialize(elements[i])
-            }
+            pointer.advancedBy(subRange.startIndex).moveInitializeBackwardFrom(newElements._pointer, count: length)
             if subRange.endIndex < _count {
                 pointer.advancedBy(subRange.startIndex + length).moveInitializeBackwardFrom(_pointer.advancedBy(_offset + subRange.endIndex), count: _count - subRange.endIndex)
             }
-            _pointer.advancedBy(_offset).destroy(_count)
-            _pointer.dealloc(_capacity)
-            _pointer = pointer
+            _releaseBuffer(newCapacity, oldCapacity:_capacity)
             _count = newCapacity
-            _capacity = newCapacity
-            _offset = 0
+            _pointer = pointer
         }
 
     }
@@ -411,23 +432,16 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     /// and concatenate the elements of the resulting sequence.  For
     /// example, `[-1, -2].join([[1, 2, 3], [4, 5, 6], [7, 8, 9]])`
     /// yields `[1, 2, 3, -1, -2, 4, 5, 6, -1, -2, 7, 8, 9]`.
-    func join<S : SequenceType where S.Generator.Element == Array<Element>>(elements: S) -> OArray<Element> {
-        return []
+    func join<S : SequenceType where S.Generator.Element == OArray<Element>>(elements: S) -> OArray<Element> {
+        let result:OArray<Element> = []
+        var generate = elements.generate()
+        while let array = generate.next() {
+            result.extend(array)
+            result.extend(self)
+        }
+        return result
     }
     
-    /// Return the result of repeatedly calling `combine` with an
-    /// accumulated value initialized to `initial` and each element of
-    /// `self`, in turn, i.e. return
-    /// `combine(combine(...combine(combine(initial, self[0]),
-    /// self[1]),...self[count-2]), self[count-1])`.
-    func reduce<T>(initial: T, @noescape combine: (T, Element) -> T) -> T {
-        return initial
-    }
-    
-    
-    func sort(isOrderedBefore: (Element, Element) -> Bool) {
-        
-    }
 }
 
 
@@ -451,53 +465,56 @@ extension OArray : CustomStringConvertible, CustomDebugStringConvertible {
     
     /// A textual representation of `self`, suitable for debugging.
     var debugDescription: String {
-        return "OArray<\(Element.self)>\(description)"
+        return "OArray<\(Element.self)>\(description) count(\(_count))"
     }
 }
 
 extension OArray {
-    // 利用闭包功能 给数组添加 查找首个符合条件元素 的 方法
-    func find(@noescape includeElement: (Element) -> Bool) -> Element? {
-        for var i:Int = 0; i<_count; i++ {
-            let item = _pointer.advancedBy(_offset + i).memory
-            if includeElement(item) {
-                return item
-            }
-        }
-        return nil
-    }
-    
-    // 利用闭包功能 给数组添加 查找首个符合条件元素下标 的 方法
-    func indexOf(@noescape includeElement: (Element) -> Bool) -> Int {
-        for var i:Int = 0; i<count; i++ {
-            if includeElement(self[i]) {
-                return i
-            }
-        }
-        return NSNotFound
-    }
-    
-    // 利用闭包功能 获取数组元素某个属性值的数组
-    func valuesFor<U>(@noescape includeElement: (Element) -> U) -> [U] {
-        var result:[U] = []
-        for item:Element in self {
-            result.append(includeElement(item))
-        }
-        return result
-    }
-    
-    // 利用闭包功能 获取符合条件数组元素 相关内容的数组
-    func valuesFor<U>(@noescape includeElement: (Element) -> U?) -> [U] {
-        var result:[U] = []
-        for item:Element in self {
-            if let u:U = includeElement(item) {
-                result.append(u)
-            }
-        }
-        return result
-    }
 
+    /// Call `body(p)`, where `p` is a pointer to the `Array`'s
+    /// contiguous storage. If no such storage exists, it is first created.
+    ///
+    /// Often, the optimizer can eliminate bounds checks within an
+    /// array algorithm, but when that fails, invoking the
+    /// same algorithm on `body`'s argument lets you trade safety for
+    /// speed.
+    func withUnsafeBufferPointer<R>(@noescape body: (UnsafeBufferPointer<Element>) -> R) -> R {
+        return body(UnsafeBufferPointer<Element>(start: _pointer.advancedBy(_offset), count: _count))
+    }
+    
+    /// Call `body(p)`, where `p` is a pointer to the `Array`'s
+    /// mutable contiguous storage. If no such storage exists, it is first created.
+    ///
+    /// Often, the optimizer can eliminate bounds- and uniqueness-checks
+    /// within an array algorithm, but when that fails, invoking the
+    /// same algorithm on `body`'s argument lets you trade safety for
+    /// speed.
+    ///
+    /// - Warning: Do not rely on anything about `self` (the `Array`
+    ///   that is the target of this method) during the execution of
+    ///   `body`: it may not appear to have its correct value.  Instead,
+    ///   use only the `UnsafeMutableBufferPointer` argument to `body`.
+    func withUnsafeMutableBufferPointer<R>(@noescape body: (inout UnsafeMutableBufferPointer<Element>) -> R) -> R {
+        var pointer = UnsafeMutableBufferPointer<Element>(start: _pointer.advancedBy(_offset), count: _count)
+        return body(&pointer)
+    }
 }
+
+/// Returns true if these arrays contain the same elements.
+func ==<Element : Equatable>(lhs: OArray<Element>, rhs: OArray<Element>) -> Bool {
+    if lhs.count != rhs.count { return false }
+    for var i:Int = 0; i<lhs.count; i++ {
+        if lhs._pointer.advancedBy(lhs._offset + i).memory != rhs._pointer.advancedBy(rhs._offset + i).memory {
+            return false
+        }
+    }
+    return true
+}
+func !=<Element : Equatable>(lhs: OArray<Element>, rhs: OArray<Element>) -> Bool {
+    return !(lhs == rhs)
+}
+
+
 
 struct OArrayGenerator<Element> : GeneratorType {
     private var generator: UnsafeMutablePointer<Element>
@@ -511,7 +528,10 @@ struct OArrayGenerator<Element> : GeneratorType {
     }
     
     mutating func next() -> Element? {
-        if offset >= range.count { return nil }
+        if offset >= range.count {
+            offset = 0
+            return nil
+        }
         return generator.advancedBy(range.startIndex + offset++).memory
     }
 }
