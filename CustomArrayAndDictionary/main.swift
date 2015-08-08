@@ -9,13 +9,13 @@
 import Foundation
 let str:String = "33"
 print("Hello, World!")
-
 var a=2;
 a+=a++ + ++a;
 print("a:\(a)")
-
+let b =  _reflect(a)
+print(b)
+debugPrint(b)
 var defaultArray:Array<Int> = [1,2,6]
-
 var objArray:OArray<Int> = [1,3,5]
 defaultArray.insert(88, atIndex: 3)
 print(defaultArray)
@@ -24,6 +24,8 @@ objArray.append(9)
 objArray.append(10)
 objArray.append(11)
 objArray.append(12)
+
+defaultArray[3] = 44
 
 
 objArray.insert(77, atIndex: 3)
@@ -42,7 +44,7 @@ print(objArray.count)
 
 objArray.replaceRange(1..<objArray.endIndex, with: [9,44,66])
 print(objArray)
-objArray[0..<1] = [2]
+objArray[1..<2] = [2]
 print(objArray[1..<2])
 print(objArray)
 

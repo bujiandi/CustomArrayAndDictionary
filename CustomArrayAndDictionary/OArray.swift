@@ -469,6 +469,12 @@ extension OArray : CustomStringConvertible, CustomDebugStringConvertible {
     }
 }
 
+extension OArray : _Reflectable {
+    func getMirrorType() -> _MirrorType {
+        return _reflect(self)
+    }
+}
+
 extension OArray {
 
     /// Call `body(p)`, where `p` is a pointer to the `Array`'s
