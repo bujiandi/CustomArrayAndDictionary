@@ -107,10 +107,13 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
             return _pointer.advancedBy(_offset + index).memory
         }
         set {
-            if index >= _count {
+            if index > _count {
                 fatalError("index(\(index)) out of count(\(_count))")
+            } else if index == _count {
+                append(newValue)
+            } else {
+                _pointer.advancedBy(_offset + index).memory = newValue
             }
-            _pointer.advancedBy(_offset + index).memory = newValue
         }
     }
     
@@ -181,19 +184,19 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
     }
     
     /// 利用闭包功能 获取数组元素某个属性值的数组
-    func valuesFor<U>(@noescape includeElement: (Element) -> U) -> [U] {
-        var result:[U] = []
+    func map<T>(@noescape transform: (Element) -> T) -> [T] {
+        var result:[T] = []
         for item:Element in self {
-            result.append(includeElement(item))
+            result.append(transform(item))
         }
         return result
     }
     
     /// 利用闭包功能 获取符合条件数组元素 相关内容的数组
-    func valuesFor<U>(@noescape includeElement: (Element) -> U?) -> [U] {
-        var result:[U] = []
+    func map<T>(@noescape transform: (Element) -> T?) -> [T] {
+        var result:[T] = []
         for item:Element in self {
-            if let u:U = includeElement(item) {
+            if let u:T = transform(item) {
                 result.append(u)
             }
         }
@@ -203,6 +206,12 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
 
 
 extension OArray : MutableSliceable, RangeReplaceableCollectionType {
+    
+    //typealias _Buffer = //_ArrayBufferType
+//    var _buffer: _Buffer { return self }
+//    func _doCopyToNativeArrayBuffer() -> _ContiguousArrayBuffer<Element> {
+//
+//    }
     
     var _baseAddressIfContiguous: UnsafeMutablePointer<Element> {
         return _pointer
@@ -470,7 +479,7 @@ extension OArray : CustomStringConvertible, CustomDebugStringConvertible {
 }
 
 extension OArray : _Reflectable {
-    func getMirrorType() -> _MirrorType {
+    func _getMirror() -> _MirrorType {
         return _reflect(self)
     }
 }

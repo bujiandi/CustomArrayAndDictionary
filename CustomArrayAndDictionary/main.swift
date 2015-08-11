@@ -7,9 +7,18 @@
 //
 
 import Foundation
-let str:String = "33"
 print("Hello, World!")
+
+var dictionary:OrderedMap<Int,String> = [1:"i1", 2:"i2", 3:"i3"]
+print(dictionary)
+debugPrint(dictionary)
+
+dictionary[3] = (4, "i9")
+print(dictionary[3])
+
+/*
 var a=2;
+
 a+=a++ + ++a;
 print("a:\(a)")
 let b =  _reflect(a)
@@ -54,3 +63,4 @@ objArray.splice([3,8,9], atIndex: 1)
 print(objArray)
 print(objArray.count)
 
+*/
