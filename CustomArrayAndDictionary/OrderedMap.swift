@@ -9,15 +9,14 @@ import Foundation
 public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, SequenceType, DictionaryLiteralConvertible {
 
     private var _pointer:UnsafeMutablePointer<Int>
-    private var _keys:ContiguousArray<Key>
-    private var _values:ContiguousArray<Value>
+    private var _keys:Array<Key>
+    private var _values:Array<Value>
     private var _count:Int = 0
     private var _offset:Int = 0
     private var _capacity:Int = 10
     private var _minimumCapacity:Int = 10
     private var _slice:Bool = false
 
-    
     public typealias Element = (Key, Value)
     public typealias Index = MapIndex<Key, Value>
     /// Create an empty dictionary.
@@ -30,9 +29,9 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, Sequ
     public init(minimumCapacity: Int) {
         _capacity = minimumCapacity
         _minimumCapacity = minimumCapacity
-        _keys = ContiguousArray<Key>()
+        _keys = []
         _keys.reserveCapacity(minimumCapacity)
-        _values = ContiguousArray<Value>()
+        _values = []
         _values.reserveCapacity(minimumCapacity)
         _pointer = UnsafeMutablePointer<Int>.alloc(minimumCapacity)
     }
@@ -221,9 +220,9 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, Sequ
     public required init(dictionaryLiteral elements: (Key, Value)...) {
         _capacity = elements.count
         _minimumCapacity = _capacity
-        _keys = ContiguousArray<Key>()
+        _keys = []
         _keys.reserveCapacity(_capacity)
-        _values = ContiguousArray<Value>()
+        _values = []
         _values.reserveCapacity(_capacity)
         _pointer = UnsafeMutablePointer<Int>.alloc(_capacity)
         for var i:Int = 0; i<_capacity; i++ {
@@ -285,6 +284,12 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, Sequ
     public var values: [Value] { //LazyForwardCollection<MapCollection<[Key : Value], Value>> {
         return [Value](_values) //LazyForwardCollection<MapCollection<[Key : Value], Value>>(_values)
     }
+    
+    deinit {
+        _releaseBuffer(0, oldCapacity: _capacity)
+        _pointer = nil
+    }
+    
     /// `true` iff `count == 0`.
     public var isEmpty: Bool { return count == 0 }
 }

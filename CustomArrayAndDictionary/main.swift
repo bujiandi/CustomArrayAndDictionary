@@ -9,13 +9,98 @@
 import Foundation
 print("Hello, World!")
 
-var dictionary:OrderedMap<Int,String> = [1:"i1", 2:"i2", 3:"i3"]
-print(dictionary)
-debugPrint(dictionary)
+var info:mach_timebase_info = mach_timebase_info()
+mach_timebase_info(&info);
 
-dictionary[3] = (4, "i9")
-print(dictionary[3])
+func timeDec(start:UInt64, _ end:UInt64) -> NSTimeInterval {
+    return Double(end - start) * Double(info.numer) / Double(info.denom) / 1e9
+}
 
+// 定义C式的函数
+let timeDecin : @convention(c) (UInt64, UInt64) -> NSTimeInterval = {
+    (start, end) -> NSTimeInterval in
+    return Double(end - start) * Double(info.numer) / Double(info.denom) / 1e9
+}
+
+func main() {
+    
+    var dictionary:Dictionary<Int, String> = [:]
+    let orderedMap:OrderedMap<Int, String> = [:]
+    
+    var length = 1000000
+    
+    var startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        dictionary[i] = "i\(i)"
+    }
+    print("普通字典初始化时间: \(timeDecin(startTime, mach_absolute_time())) s")
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        orderedMap[i] = "i\(i)"
+    }
+    print("序列字典初始化时间: \(timeDecin(startTime, mach_absolute_time())) s")
+    
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        dictionary[i] == "i\(i)"
+    }
+    print("普通字典读取时间: \(timeDecin(startTime, mach_absolute_time())) s")
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        orderedMap[i] == "i\(i)"
+    }
+    print("序列字典读取时间: \(timeDecin(startTime, mach_absolute_time())) s")
+    
+    length = 100000000
+    var array:Array<Int> = []
+    let oarray:OArray<Int> = []
+    var carray:ContiguousArray<Int> = []
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        array.append(i)
+    }
+    print("普通数组初始化时间: \(timeDec(startTime, mach_absolute_time())) s")
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        oarray.append(i)
+    }
+    print("对象数组初始化时间: \(timeDec(startTime, mach_absolute_time())) s")
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        carray.append(i)
+    }
+    print("高效数组初始化时间: \(timeDec(startTime, mach_absolute_time())) s")
+    
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        array[i] == i
+        
+    }
+    print("普通数组读取时间: \(timeDec(startTime, mach_absolute_time())) s")
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        oarray[i] == i
+    }
+    print("序列数组读取时间: \(timeDec(startTime, mach_absolute_time())) s")
+    
+    startTime = mach_absolute_time()
+    for var i:Int=0; i<length; i++ {
+        carray[i] == i
+    }
+    print("高效数组读取时间: \(timeDec(startTime, mach_absolute_time())) s")
+
+}
+main()
+print("比较完毕")
+//print("appTime:\(appTime) startTime:\(startTime)")
 /*
 var a=2;
 
