@@ -9,6 +9,12 @@
 import Foundation
 print("Hello, World!")
 
+let dict:OrderedMap<String, [Int]> = [:]
+
+dict["book"] = [1,2,3]
+dict["look"] = [3,2]
+print(dict)
+/*
 var info:mach_timebase_info = mach_timebase_info()
 mach_timebase_info(&info);
 
@@ -100,6 +106,7 @@ func main() {
 }
 main()
 print("比较完毕")
+*/
 //print("appTime:\(appTime) startTime:\(startTime)")
 /*
 var a=2;

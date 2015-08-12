@@ -94,6 +94,8 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, Sequ
             if let value = newValue {
                 if let position = indexForKey(key) {
                     _values[position.rawValue] = value
+                } else {
+                    putValue(value, forKey: key)
                 }
             } else {
                 if let position = indexForKey(key) {
