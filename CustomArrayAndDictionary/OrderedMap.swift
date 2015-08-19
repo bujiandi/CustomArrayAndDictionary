@@ -205,6 +205,8 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, Sequ
             _pointer = UnsafeMutablePointer<Int>.alloc(_capacity)
         }
         _offset = 0
+        _keys.removeAll(keepCapacity: keepCapacity)
+        _values.removeAll(keepCapacity: keepCapacity)
     }
     /// The number of entries in the dictionary.
     ///
