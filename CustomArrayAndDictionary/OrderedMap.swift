@@ -6,7 +6,7 @@
 
 import Foundation
 
-public class OrderedMap<Key : Hashable, Value> : CollectionType, Indexable, SequenceType, DictionaryLiteralConvertible {
+public class OrderedMap<Key : Hashable, Value> : CollectionType, MutableCollectionType, Indexable, SequenceType, DictionaryLiteralConvertible {
 
     private var _pointer:UnsafeMutablePointer<Int>
     private var _keys:Array<Key>

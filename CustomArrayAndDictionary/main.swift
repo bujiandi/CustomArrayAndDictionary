@@ -9,6 +9,7 @@
 import Foundation
 print("Hello, World!")
 
+let dddd:Dictionary<String, [Int]> = [:]
 let dict:OrderedMap<String, [Int]> = [:]
 
 dict["book"] = [1,2,3]

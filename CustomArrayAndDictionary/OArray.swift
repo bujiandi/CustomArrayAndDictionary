@@ -39,7 +39,7 @@ class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
         _minimumCapacity = _capacity
         _pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
         for var i:Int = 0; i<_count; i++ {
-            _pointer.advancedBy(i).initialize(elements[advance(elements.startIndex, i)])
+            _pointer.advancedBy(i).initialize(elements[elements.startIndex.advancedBy(i)])
         }
     }
     
