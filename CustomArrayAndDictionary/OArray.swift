@@ -147,31 +147,6 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
     /// - Complexity: O(N).
     func underestimateCount() -> Int { return _count }
     
-    /// Return an `Array` containing the results of mapping `transform`
-    /// over `self`.
-    ///
-    /// - Complexity: O(N).
-    func map<T>(@noescape transform: (Element) -> T) -> OArray<T> {
-        let result:OArray<T> = OArray<T>(capacity: _count)
-        for var i:Int = 0; i < _count; i++ {
-            result.append(transform(_pointer.advancedBy(_offset + i).memory))
-        }
-        return result
-    }
-    
-    /// Return an `Array` containing the elements of `self`,
-    /// in order, that satisfy the predicate `includeElement`.
-    func filter(@noescape includeElement: (Element) -> Bool) -> OArray<Element> {
-        let result:OArray<Element> = []
-        for var i:Int = 0; i < _count; i++ {
-            let item:Element = _pointer.advancedBy(_offset + i).memory
-            if includeElement(item) {
-                result.append(item)
-            }
-        }
-        return result
-    }
-    
     /// 利用闭包功能 给数组添加 查找首个符合条件元素 的 方法
     func find(@noescape includeElement: (Element) -> Bool) -> Element? {
         for var i:Int = 0; i<_count; i++ {
@@ -181,26 +156,6 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
             }
         }
         return nil
-    }
-    
-    /// 利用闭包功能 获取数组元素某个属性值的数组
-    func map<T>(@noescape transform: (Element) -> T) -> [T] {
-        var result:[T] = []
-        for item:Element in self {
-            result.append(transform(item))
-        }
-        return result
-    }
-    
-    /// 利用闭包功能 获取符合条件数组元素 相关内容的数组
-    func map<T>(@noescape transform: (Element) -> T?) -> [T] {
-        var result:[T] = []
-        for item:Element in self {
-            if let u:T = transform(item) {
-                result.append(u)
-            }
-        }
-        return result
     }
 }
 
