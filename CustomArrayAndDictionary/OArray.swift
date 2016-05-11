@@ -38,7 +38,7 @@ class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
         _capacity = _count == 0 ? _capacity : _count
         _minimumCapacity = _capacity
         _pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
-        for var i:Int = 0; i<_count; i++ {
+        for i:Int in 0 ..< _count {
             _pointer.advancedBy(i).initialize(elements[elements.startIndex.advancedBy(i)])
         }
     }
@@ -65,7 +65,7 @@ class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
         _pointer.moveInitializeBackwardFrom(buffer._pointer.advancedBy(buffer._offset), count: _count)
     }
     /// Construct from an arbitrary sequence with elements of type `Element`.
-    init<S : SequenceType where S.Generator.Element == Element>(_ s: S) {
+    required init<S : SequenceType where S.Generator.Element == Element>(_ s: S) {
         _pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
         var generate = s.generate()
         while let element:Element = generate.next() {
@@ -77,7 +77,7 @@ class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
     /// `repeatedValue`.
     init(count: Int, repeatedValue: Element) {
         _pointer = UnsafeMutablePointer<Element>.alloc(count)
-        for var i:Int = 0; i < count; i++ {
+        for i:Int in 0 ..< count {
             _pointer.advancedBy(i).initialize(repeatedValue)
         }
         _capacity = count

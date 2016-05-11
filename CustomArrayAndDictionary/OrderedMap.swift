@@ -57,7 +57,7 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, MutableCollecti
     /// present in the dictionary.
     public func indexForKey(key: Key) -> Index? {
         let hasValue = key.hashValue
-        for var i:Int = 0; i < _count; i++ {
+        for i:Int in 0 ..< _count {
             if _pointer.advancedBy(_offset + i).memory == hasValue { return MapIndex<Key, Value>(rawValue: i) }
         }
         return nil
@@ -112,7 +112,8 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, MutableCollecti
         _pointer.advancedBy(_offset + _count).initialize(key.hashValue)
         _keys.append(key)
         _values.append(value)
-        return MapIndex<Key, Value>(rawValue:_count++)
+        defer { _count += 1 }
+        return MapIndex<Key, Value>(rawValue:_count)
     }
     /// Update the value stored in the dictionary for the given key, or, if they
     /// key does not exist, add a new key-value pair to the dictionary.
@@ -163,16 +164,19 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, MutableCollecti
         if _count == 0 {
             fatalError("can't remove last because count is zero")
         }
-        let lastPointer = _pointer.advancedBy(--_count)
+        _count -= 1
+        let lastPointer = _pointer.advancedBy(_count)
         lastPointer.destroy()
         return (_keys.removeAtIndex(_count), _values.removeAtIndex(_count))
     }
     
     func removeFirst() -> (Key, Value) {
-        if _count-- == 0 {
+        if _count == 0 {
             fatalError("can't remove first because count is zero")
         }
+        _count -= 1
         _pointer.advancedBy(_offset++).destroy()
+        _offset += 1
         return (_keys.removeAtIndex(0), _values.removeAtIndex(0))
     }
     
