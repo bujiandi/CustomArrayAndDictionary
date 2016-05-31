@@ -149,7 +149,7 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
     
     /// 利用闭包功能 给数组添加 查找首个符合条件元素 的 方法
     func find(@noescape includeElement: (Element) -> Bool) -> Element? {
-        for var i:Int = 0; i<_count; i++ {
+        for i:Int in 0 ..< _count {
             let item = _pointer.advancedBy(_offset + i).memory
             if includeElement(item) {
                 return item
@@ -159,6 +159,10 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
     }
 }
 
+//CollectionType
+//extension OArray : CollectionType where SubSequence : MutableCollectionType {
+//    
+//}
 
 extension OArray : MutableSliceable, RangeReplaceableCollectionType {
     
@@ -191,7 +195,7 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
         let pointer = UnsafeMutablePointer<Element>.alloc(_capacity)
         if i > 0 { pointer.moveInitializeBackwardFrom(_pointer.advancedBy(_offset), count: i) }
         pointer.advancedBy(i).moveInitializeBackwardFrom(newElements._pointer, count: length)
-        for var j:Int = 0; j < length; j++ {
+        for j:Int in 0 ..< length {
             pointer.advancedBy(i + j).initialize(newElements[j])
         }
         if i < _count { pointer.advancedBy(i + length).moveInitializeBackwardFrom(_pointer.advancedBy(_offset + i), count: _count - i) }
@@ -413,7 +417,7 @@ extension OArray : CustomStringConvertible, CustomDebugStringConvertible {
     
     func componentsJoinedByString(separator: String) -> String {
         var result = ""
-        for var i:Int = _offset; i<_count + _offset; i++ {
+        for i:Int in _offset ..< _count + _offset {
             if !result.isEmpty {
                 result += separator
             }
@@ -473,7 +477,7 @@ extension OArray {
 /// Returns true if these arrays contain the same elements.
 func ==<Element : Equatable>(lhs: OArray<Element>, rhs: OArray<Element>) -> Bool {
     if lhs.count != rhs.count { return false }
-    for var i:Int = 0; i<lhs.count; i++ {
+    for i:Int in 0 ..< lhs.count {
         if lhs._pointer.advancedBy(lhs._offset + i).memory != rhs._pointer.advancedBy(rhs._offset + i).memory {
             return false
         }
