@@ -233,7 +233,7 @@ public class OrderedMap<Key : Hashable, Value> : CollectionType, MutableCollecti
         _values = []
         _values.reserveCapacity(_capacity)
         _pointer = UnsafeMutablePointer<Int>.alloc(_capacity)
-        for var i:Int = 0; i<_capacity; i++ {
+        for i:Int in 0 ..< _capacity {
             let element = elements[i]
             _pointer.advancedBy(i).initialize(element.0.hashValue)
             _keys.append(element.0)
@@ -306,7 +306,7 @@ extension OrderedMap : CustomStringConvertible, CustomDebugStringConvertible {
     /// A textual representation of `self`.
     public var description: String {
         var result:String = ""
-        for var i:Int = 0; i<_count; i++ {
+        for i:Int in 0 ..< _count {
             if !result.isEmpty { result += ", " }
             result += "\(_keys[i]): \(_values[i])"
         }

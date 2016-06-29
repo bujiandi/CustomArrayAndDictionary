@@ -91,7 +91,7 @@ class OArray<Element> : ArrayLiteralConvertible, _DestructorSafeContainer {
     
 }
 
-extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceType {
+extension OArray : MutableCollectionType, Indexable, SequenceType {
     
     typealias Generator = OArrayGenerator<Element>
     
@@ -164,7 +164,8 @@ extension OArray : MutableCollectionType, CollectionType, Indexable, SequenceTyp
 //    
 //}
 
-extension OArray : MutableSliceable, RangeReplaceableCollectionType {
+
+extension OArray : RangeReplaceableCollectionType {
     
     //typealias _Buffer = //_ArrayBufferType
 //    var _buffer: _Buffer { return self }
@@ -208,24 +209,6 @@ extension OArray : MutableSliceable, RangeReplaceableCollectionType {
         replaceRange(subRange, with: [])
     }
     
-    /// A type that can represent a sub-range of an `Array`.
-    typealias SubSlice = OArray<Element>
-    subscript (subRange: Range<Int>) -> SubSlice {
-        get {
-            
-            let slice = OArray<Element>(self)
-            slice._capacity = _capacity
-            slice._offset = _offset + subRange.startIndex
-            slice._count = subRange.count
-            slice._minimumCapacity = _offset + subRange.endIndex
-            slice._pointer = _pointer
-            slice._slice = true
-            return slice
-        }
-        set {
-            replaceRange(subRange, with: newValue)
-        }
-    }
     /// The number of elements the `Array` can store without reallocation.
     var capacity: Int { return _capacity - _offset }
     
